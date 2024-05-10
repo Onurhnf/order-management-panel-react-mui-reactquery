@@ -4,7 +4,7 @@ export interface Item {
 }
 
 export interface Order {
-  id: string;
+  id?: string;
   address: string;
   payment: string;
   delivery_time: string;

@@ -1,28 +1,54 @@
-import Card from "@mui/material/Card";
-import { red, blueGrey } from "@mui/material/colors";
-import { CardContent, Stack, Typography } from "@mui/material";
+import { Toaster } from "react-hot-toast";
+import { QueryClient, QueryClientProvider } from "react-query";
+import { Box, colors } from "@mui/material";
+import Dashboard from "./pages/Dashboard";
+import { DndProvider } from "react-dnd";
+import { HTML5Backend } from "react-dnd-html5-backend";
 
-const color = red[500];
-const color2 = blueGrey[100];
 function App() {
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: {
+        staleTime: 0,
+      },
+    },
+  });
+
   return (
     <>
-      <Card sx={{ width: 400, border: `1px solid ${color2}` }}>
-        <CardContent>
-          <Stack justifyContent="space-between" direction="row">
-            <Stack direction="row">
-              <Typography>Status:</Typography>
-              <Typography color={color}>asd</Typography>
-            </Stack>
-            <Typography fontWeight="bold">Order No: 1111</Typography>
-          </Stack>
-        </CardContent>
-        <CardContent>
-          <Stack textAlign="start">
-            <Typography>adress</Typography>
-          </Stack>
-        </CardContent>
-      </Card>
+      <QueryClientProvider client={queryClient}>
+        <DndProvider backend={HTML5Backend}>
+          <Box
+            sx={{
+              justifyContent: "center",
+              alignContent: "center",
+              minHeight: "100vh",
+            }}
+          >
+            <Dashboard />
+          </Box>
+        </DndProvider>
+        <Toaster
+          position="top-center"
+          gutter={12}
+          containerStyle={{ margin: "8px" }}
+          toastOptions={{
+            success: {
+              duration: 2000,
+            },
+            error: {
+              duration: 3000,
+            },
+            style: {
+              fontSize: "16px",
+              maxWidth: "500px",
+              padding: "16px 24px",
+              backgroundColor: colors.grey[100],
+              color: colors.grey[700],
+            },
+          }}
+        />
+      </QueryClientProvider>
     </>
   );
 }

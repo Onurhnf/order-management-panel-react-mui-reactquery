@@ -6,4 +6,4 @@ const courierKey = "couriers";
 export const useCouriers = () => useQuery([courierKey], getAllCouriers);
 
 export const useCourier = (id: string) =>
-  useQuery([courierKey, id], () => getCourierById(id));
+  useQuery([courierKey, id], () => getCourierById(id), { enabled: !!id });

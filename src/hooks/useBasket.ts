@@ -6,6 +6,8 @@ import {
   assignCourierToBasket,
   addOrderToBasket,
   removeOrderFromBasket,
+  createBasket,
+  removeBasket,
 } from "../services/basket.service";
 import { toast } from "react-hot-toast";
 
@@ -14,7 +16,7 @@ const basketKey = "baskets";
 export const useBaskets = () => useQuery([basketKey], getAllBaskets);
 
 export const useBasket = (id: string) =>
-  useQuery([basketKey, id], () => getBasketById(id));
+  useQuery([basketKey, id], () => getBasketById(id), { enabled: !!id });
 
 export const useUpdateBasketStatus = () => {
   const queryClient = useQueryClient();
@@ -25,7 +27,6 @@ export const useUpdateBasketStatus = () => {
     {
       onSuccess: () => {
         queryClient.invalidateQueries([basketKey]);
-        toast.success("Basket Status Updated Successfully!");
       },
       onError: (error: Error) => {
         toast.error(error.message);
@@ -43,7 +44,7 @@ export const useAssignCourierToBasket = () => {
     {
       onSuccess: () => {
         queryClient.invalidateQueries([basketKey]);
-        toast.success("Courier Assigned to Basket Successfully!");
+        toast.success("Kurye başarıyla sepete atandı.");
       },
       onError: (error: Error) => {
         toast.error(error.message);
@@ -61,7 +62,7 @@ export const useAddOrderToBasket = () => {
     {
       onSuccess: () => {
         queryClient.invalidateQueries([basketKey]);
-        toast.success("Order Added to Basket Successfully!");
+        toast.success("Sipariş başarıyla sepete eklendi.");
       },
       onError: (error: Error) => {
         toast.error(error.message);
@@ -79,11 +80,37 @@ export const useRemoveOrderFromBasket = () => {
     {
       onSuccess: () => {
         queryClient.invalidateQueries([basketKey]);
-        toast.success("Order Removed from Basket Successfully!");
+        toast.success("Sipariş sepetten başarıyla kaldırıldı.");
       },
       onError: (error: Error) => {
         toast.error(error.message);
       },
     }
   );
+};
+export const useCreateBasket = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation((newBasket: string[]) => createBasket(newBasket), {
+    onSuccess: () => {
+      queryClient.invalidateQueries([basketKey]);
+      toast.success("Sepet başarıyla oluşturuldu.");
+    },
+    onError: (error: Error) => {
+      toast.error(error.message);
+    },
+  });
+};
+export const useRemoveBasket = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation((basketId: string) => removeBasket(basketId), {
+    onSuccess: () => {
+      queryClient.invalidateQueries([basketKey]);
+      toast.success("Sepet başarıyla silindi.");
+    },
+    onError: (error: Error) => {
+      toast.error(error.message);
+    },
+  });
 };
