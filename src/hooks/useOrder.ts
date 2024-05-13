@@ -6,7 +6,7 @@ import {
   updateOrderStatus,
 } from "../services/order.service";
 import { toast } from "react-hot-toast";
-import { Order, UpdateOrderParams } from "../interfaces/IOrder.interface";
+import { IOrder, UpdateOrderParams } from "../interfaces/IOrder.interface";
 import { useBaskets } from "./useBasket";
 
 const orderKey = "orders";
@@ -36,7 +36,7 @@ export const useOrder = (id: string) =>
 export const useCreateOrder = () => {
   const queryClient = useQueryClient();
 
-  return useMutation((newOrder: Order) => createOrder(newOrder), {
+  return useMutation((newOrder: IOrder) => createOrder(newOrder), {
     onSuccess: () => {
       queryClient.invalidateQueries([orderKey]);
       toast.success("Sipariş başarıyla oluşturuldu");

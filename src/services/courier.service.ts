@@ -1,8 +1,8 @@
 import axios from "axios";
 import { ENDPOINTS } from "../api/apiEndpoints";
-import { CourierDetail } from "../interfaces/ICourier.interface";
+import { ICourier } from "../interfaces/ICourier.interface";
 
-export const getAllCouriers = async (): Promise<CourierDetail[]> => {
+export const getAllCouriers = async (): Promise<ICourier[]> => {
   try {
     const response = await axios.get(ENDPOINTS.COURIERS);
     return response.data;
@@ -12,7 +12,7 @@ export const getAllCouriers = async (): Promise<CourierDetail[]> => {
   }
 };
 
-export const getCourierById = async (id: string): Promise<CourierDetail> => {
+export const getCourierById = async (id: string): Promise<ICourier> => {
   try {
     const response = await axios.get(`${ENDPOINTS.COURIERS}/${id}`);
     return response.data;

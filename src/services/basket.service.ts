@@ -1,10 +1,10 @@
 import axios from "axios";
 import { ENDPOINTS } from "../api/apiEndpoints";
-import { Basket } from "../interfaces/IBasket.interface";
+import { IBasket } from "../interfaces/IBasket.interface";
 import { getOrderById, updateOrderStatus } from "./order.service";
-import { BASKET_STATUS, ORDER_STATUS } from "../utils/constants";
+import { BasketStatus, OrderStatus } from "../utils/constants";
 
-export const getAllBaskets = async (): Promise<Basket[]> => {
+export const getAllBaskets = async (): Promise<IBasket[]> => {
   try {
     const response = await axios.get(ENDPOINTS.BASKETS);
     return response.data;
@@ -14,7 +14,7 @@ export const getAllBaskets = async (): Promise<Basket[]> => {
   }
 };
 
-export const getBasketById = async (id: string): Promise<Basket> => {
+export const getBasketById = async (id: string): Promise<IBasket> => {
   try {
     const response = await axios.get(`${ENDPOINTS.BASKETS}/${id}`);
     return response.data;
@@ -27,20 +27,28 @@ export const getBasketById = async (id: string): Promise<Basket> => {
 export const updateBasketStatus = async (
   id: string,
   status: string
-): Promise<Basket> => {
+): Promise<IBasket> => {
   try {
     const basket = await getBasketById(id);
     if (!basket.courier_id) {
       throw new Error("Kuryesi olmayan sepet statüsü güncellenemez. ");
     }
 
-    if (status === "ON_THE_WAY") {
+    if (status === BasketStatus.ON_THE_WAY) {
       const orderUpdatePromises = basket.orders.map(async (orderId) => {
         const order = await getOrderById(orderId);
-        if (order.status === "PREPARED") {
-          await updateOrderStatus(orderId, "ON_THE_WAY");
-        } else if (order.status === "PREPARING") {
+        if (order.status === OrderStatus.PREPARED) {
+          await updateOrderStatus(orderId, OrderStatus.ON_THE_WAY);
+        } else if (order.status === OrderStatus.PREPARING) {
           throw new Error("Sepetteki ürünler henüz hazır değil.");
+        }
+      });
+      await Promise.all(orderUpdatePromises);
+    } else if (status === BasketStatus.READY) {
+      const orderUpdatePromises = basket.orders.map(async (orderId) => {
+        const order = await getOrderById(orderId);
+        if (order.status === OrderStatus.ON_THE_WAY) {
+          await updateOrderStatus(orderId, OrderStatus.PREPARED);
         }
       });
       await Promise.all(orderUpdatePromises);
@@ -120,7 +128,7 @@ export const removeOrderFromBasket = async (
   }
 };
 
-export const createBasket = async (orderIds: string[]): Promise<Basket> => {
+export const createBasket = async (orderIds: string[]): Promise<IBasket> => {
   if (orderIds.length < 2) {
     throw new Error("At least two order IDs are required to create a basket");
   }
@@ -128,16 +136,13 @@ export const createBasket = async (orderIds: string[]): Promise<Basket> => {
   for (const orderId of orderIds) {
     const order = await getOrderById(orderId);
 
-    if (
-      ORDER_STATUS[order.status as keyof typeof ORDER_STATUS] !==
-      ORDER_STATUS.PREPARED
-    ) {
+    if (OrderStatus[order.status] !== OrderStatus.PREPARED) {
       throw new Error(`Siparişler "HAZIRLANIYOR" statüsünde olmalı.`);
     }
   }
-  const basketStatusKey = Object.keys(BASKET_STATUS).find(
+  const basketStatusKey = Object.keys(BasketStatus).find(
     (key) =>
-      BASKET_STATUS[key as keyof typeof BASKET_STATUS] === BASKET_STATUS.READY
+      BasketStatus[key as keyof typeof BasketStatus] === BasketStatus.READY
   );
   try {
     const response = await axios.post(ENDPOINTS.BASKETS, {

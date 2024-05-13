@@ -1,8 +1,4 @@
-export interface CourierDetail {
+export interface ICourier {
   id: string;
   name: string;
-}
-
-export interface Couriers {
-  couriers: CourierDetail[];
 }

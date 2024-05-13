@@ -1,3 +1,5 @@
+import { memo, useState } from "react";
+
 import {
   Box,
   Button,
@@ -7,17 +9,23 @@ import {
   Typography,
 } from "@mui/material";
 import { blueGrey } from "@mui/material/colors";
-import { ITEM_TYPES, ORDER_STATUS } from "../utils/constants";
+
 import { useOrder } from "../hooks/useOrder";
-import { getStatusColor } from "../utils/helper";
-import { ConnectableElement, useDrag, useDrop } from "react-dnd";
 import {
   useAddOrderToBasket,
   useCreateBasket,
   useRemoveOrderFromBasket,
 } from "../hooks/useBasket";
+import { ConnectableElement, useDrag, useDrop } from "react-dnd";
+
 import OrderDetailModal from "./OrderDetailModal";
-import { useState } from "react";
+import { getStatusColor } from "../utils/helper";
+import {
+  BasketStatus,
+  ItemTypes,
+  OrderStatus,
+  OrderStatusLabel,
+} from "../utils/constants";
 
 interface OrderProps {
   orderNo: string;
@@ -28,10 +36,12 @@ interface DropResult {
   name: string;
   orderNo: string;
   basketNo: string;
+  basketStatus: BasketStatus;
 }
-function Order({ orderNo, basketNo, isOnTheWay }: OrderProps) {
+function OrderComponent({ orderNo, basketNo, isOnTheWay }: OrderProps) {
   const { data: order, isLoading } = useOrder(orderNo);
   const [open, setOpen] = useState(false);
+
   const handleOpen = () => setOpen(true);
   const handleClose = () => setOpen(false);
 
@@ -40,22 +50,30 @@ function Order({ orderNo, basketNo, isOnTheWay }: OrderProps) {
   const removeOrderFromBasket = useRemoveOrderFromBasket();
 
   const [{ isDragging }, drag] = useDrag(() => ({
-    type: ITEM_TYPES.ORDER,
-    item: { name: "ORDER", orderNo, basketNo },
+    type: ItemTypes.ORDER,
+    item: { name: ItemTypes.ORDER, orderNo, basketNo },
     canDrag: !isOnTheWay,
     end: (item, monitor) => {
       const dropResult = monitor.getDropResult<DropResult>();
       if (item && dropResult) {
-        if (item.name === "ORDER" && dropResult.name === "ORDER" && !basketNo) {
+        if (
+          item.name === ItemTypes.ORDER &&
+          dropResult.name === ItemTypes.ORDER &&
+          !basketNo
+        ) {
           createBasket.mutate([item.orderNo, dropResult.orderNo]);
         }
-        if (item.name === "ORDER") {
-          if (dropResult.name === "BASKET" && !basketNo) {
+        if (item.name === ItemTypes.ORDER) {
+          if (
+            dropResult.name === ItemTypes.BASKET &&
+            !basketNo &&
+            dropResult.basketStatus === BasketStatus.READY
+          ) {
             addOrderToBasket.mutate({
               basketId: dropResult.basketNo,
               orderId: item.orderNo,
             });
-          } else if (dropResult.name !== "BASKET" && basketNo) {
+          } else if (dropResult.name !== ItemTypes.BASKET && basketNo) {
             removeOrderFromBasket.mutate({
               basketId: basketNo,
               orderId: item.orderNo,
@@ -70,8 +88,8 @@ function Order({ orderNo, basketNo, isOnTheWay }: OrderProps) {
   }));
 
   const [, drop] = useDrop(() => ({
-    accept: ITEM_TYPES.ORDER,
-    drop: () => ({ name: "ORDER", orderNo }),
+    accept: ItemTypes.ORDER,
+    drop: () => ({ name: ItemTypes.ORDER, orderNo }),
   }));
 
   if (isLoading) return <div>Loading...</div>;
@@ -79,9 +97,7 @@ function Order({ orderNo, basketNo, isOnTheWay }: OrderProps) {
   if (!order) {
     return <div>No Order...</div>;
   }
-  const color = getStatusColor(
-    ORDER_STATUS[order.status as keyof typeof ORDER_STATUS]
-  );
+  const color = getStatusColor(OrderStatus[order.status]);
   const opacity = isDragging ? 0.4 : 1;
 
   function handleOrderClick(
@@ -120,7 +136,7 @@ function Order({ orderNo, basketNo, isOnTheWay }: OrderProps) {
           <CardContent>
             <Stack justifyContent="space-between" direction="row">
               <Typography fontWeight="bold" color={color}>
-                {ORDER_STATUS[order.status as keyof typeof ORDER_STATUS]}
+                {OrderStatusLabel[order.status]}
               </Typography>
 
               <Typography fontWeight="bold">Sipariş No: {order.id}</Typography>
@@ -137,4 +153,5 @@ function Order({ orderNo, basketNo, isOnTheWay }: OrderProps) {
   );
 }
 
+const Order = memo(OrderComponent);
 export default Order;

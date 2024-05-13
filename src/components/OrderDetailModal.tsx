@@ -1,10 +1,13 @@
+import { memo, useState } from "react";
+
 import { Box, MenuItem, Modal, Select, Stack, Typography } from "@mui/material";
 import { useOrder, useUpdateOrderStatus } from "../hooks/useOrder";
 import {
-  ORDER_STATUS_ON_THE_WAY,
-  ORDER_STATUS_READY,
+  OrderStatus,
+  BasketStatus,
+  OrderStatusGroups,
+  OrderStatusLabel,
 } from "../utils/constants";
-import { useState } from "react";
 
 interface OrderDetailModalProps {
   open: boolean;
@@ -13,7 +16,7 @@ interface OrderDetailModalProps {
   isOnTheWay?: boolean;
 }
 
-function OrderDetailModal({
+function OrderDetailModalComponent({
   open,
   handleClose,
   orderNo,
@@ -21,20 +24,9 @@ function OrderDetailModal({
 }: OrderDetailModalProps) {
   const { data: order, isLoading } = useOrder(orderNo);
   const updateOrderStatus = useUpdateOrderStatus();
-  const [newStatus, setNewStatus] = useState(order?.status || "");
-
-  const style = {
-    position: "absolute",
-    top: "50%",
-    left: "50%",
-    transform: "translate(-50%, -50%)",
-    width: 400,
-    bgcolor: "background.paper",
-    border: "2px solid #000",
-    borderRadius: "20px",
-    boxShadow: 24,
-    p: 4,
-  };
+  const [newStatus, setNewStatus] = useState<OrderStatus | "">(
+    order?.status || ""
+  );
 
   if (isLoading) return <div>Loading...</div>;
   if (!order) {
@@ -42,13 +34,14 @@ function OrderDetailModal({
   }
 
   function handleStatusChange(e: { target: { value: string } }): void {
-    setNewStatus(e.target.value as string);
-    updateOrderStatus.mutate({ id: orderNo, status: e.target.value });
+    const newStatus = e.target.value as OrderStatus;
+    setNewStatus(newStatus);
+    updateOrderStatus.mutate({ id: orderNo, status: newStatus });
   }
 
-  const statusOptions = isOnTheWay
-    ? ORDER_STATUS_ON_THE_WAY
-    : ORDER_STATUS_READY;
+  const statusOptions = Object.keys(
+    OrderStatusGroups[isOnTheWay ? BasketStatus.ON_THE_WAY : BasketStatus.READY]
+  ) as Array<keyof (typeof OrderStatusGroups)[BasketStatus.READY]>;
 
   return (
     <Modal
@@ -57,12 +50,14 @@ function OrderDetailModal({
       aria-labelledby="modal-modal-title"
       aria-describedby="modal-modal-description"
     >
-      <Box sx={style}>
+      <Box sx={modalStyle}>
         <Typography
           sx={{ textAlign: "center" }}
           id="modal-modal-title"
           variant="h6"
           component="h2"
+          fontWeight="bold"
+          mb={2}
         >
           Sipariş Detayı
         </Typography>
@@ -79,25 +74,56 @@ function OrderDetailModal({
           <Typography>
             <strong>Statü:</strong>{" "}
           </Typography>
-          <Select value={newStatus} size="small" onChange={handleStatusChange}>
-            {Object.keys(statusOptions).map((statusKey) => (
-              <MenuItem key={statusKey} value={statusKey}>
-                {statusOptions[statusKey as keyof typeof statusOptions]}
-              </MenuItem>
-            ))}
-          </Select>
+
+          <Box sx={{ minWidth: 200, ml: 1, justifyContent: "center" }}>
+            <Select
+              sx={{ minWidth: 150 }}
+              value={newStatus}
+              size="small"
+              onChange={handleStatusChange}
+            >
+              {statusOptions.map((statusKey) => (
+                <MenuItem key={statusKey} value={statusKey}>
+                  {OrderStatusLabel[statusKey]}
+                </MenuItem>
+              ))}
+            </Select>
+          </Box>
         </Stack>
         <Typography>
           <strong>İçerik</strong>
         </Typography>
-        <ul>
-          {order.items.map((item) => (
-            <li key={item.id}>{item.name} </li>
-          ))}
-        </ul>
+
+        <Box maxWidth={400}>
+          <Stack
+            maxWidth={400}
+            mt={1}
+            direction={"column"}
+            flexWrap={"wrap"}
+            gap={1}
+          >
+            {order.items.map((item) => (
+              <li key={item.id}>{item.name} </li>
+            ))}
+          </Stack>
+        </Box>
       </Box>
     </Modal>
   );
 }
 
+const OrderDetailModal = memo(OrderDetailModalComponent);
 export default OrderDetailModal;
+
+const modalStyle = {
+  position: "absolute",
+  top: "50%",
+  left: "50%",
+  transform: "translate(-50%, -50%)",
+  width: 400,
+  bgcolor: "background.paper",
+  border: "2px solid #000",
+  borderRadius: "20px",
+  boxShadow: 24,
+  p: 4,
+};

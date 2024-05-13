@@ -1,3 +1,5 @@
+import { memo, useEffect, useState } from "react";
+
 import {
   Box,
   Card,
@@ -6,41 +8,45 @@ import {
   Typography,
   colors,
 } from "@mui/material";
-import Order from "./Order";
-import {
-  useBasket,
-  useRemoveBasket,
-  useUpdateBasketStatus,
-} from "../hooks/useBasket";
-import { BASKET_STATUS, ITEM_TYPES } from "../utils/constants";
-import { getStatusColor } from "../utils/helper";
-import { useCourier } from "../hooks/useCourier";
-import { ConnectableElement, useDrag, useDrop } from "react-dnd";
-import { useEffect, useRef, useState } from "react";
-import BasketDetailModal from "./BasketDetailModal";
 import BorderColorIcon from "@mui/icons-material/BorderColor";
-import { useQueryClient } from "react-query";
+
+import { useRemoveBasket, useUpdateBasketStatus } from "../hooks/useBasket";
+import { useCourier } from "../hooks/useCourier";
 import { useOrdersByBasket } from "../hooks/useOrder";
+import { ConnectableElement, useDrag, useDrop } from "react-dnd";
+import { useQueryClient } from "react-query";
+
+import {
+  BasketStatus,
+  BasketStatusLabel,
+  ItemTypes,
+  OrderStatus,
+} from "../utils/constants";
+import { getStatusColor } from "../utils/helper";
+import BasketDetailModal from "./BasketDetailModal";
+import Order from "./Order";
+
+import { IOrder } from "../interfaces/IOrder.interface";
+import { IBasket } from "../interfaces/IBasket.interface";
 
 interface BasketProps {
-  basketNo: string;
-  courierNo: string;
-  isOnTheWay?: boolean;
+  basket: IBasket;
+  isNotReady?: boolean;
 }
 interface DropResult {
   name: string;
-  isReady: boolean;
+  status: BasketStatus;
 }
 
-function Basket({ basketNo, courierNo, isOnTheWay }: BasketProps) {
+function BasketComponent({ basket, isNotReady: isOnTheWay }: BasketProps) {
+  const basketNo = basket.id;
+  const courierNo = basket.courier_id;
+
   const [open, setOpen] = useState(false);
   const handleOpen = () => setOpen(true);
   const handleClose = () => setOpen(false);
-  const isFirstRun = useRef(true);
 
   const queryClient = useQueryClient();
-
-  const { data: basket, isLoading } = useBasket(basketNo);
   const { data: orders } = useOrdersByBasket(basketNo);
 
   const { data: courier } = useCourier(courierNo);
@@ -55,8 +61,9 @@ function Basket({ basketNo, courierNo, isOnTheWay }: BasketProps) {
   }, [basket, basketNo]);
 
   const [, drop] = useDrop(() => ({
-    accept: ITEM_TYPES.ORDER,
-    drop: () => ({ name: "BASKET", basketNo }),
+    accept: ItemTypes.ORDER,
+    drop: () => ({ name: "BASKET", basketNo, basketStatus: basket?.status }),
+
     collect: (monitor) => ({
       isOver: monitor.isOver(),
       canDrop: monitor.canDrop(),
@@ -64,20 +71,20 @@ function Basket({ basketNo, courierNo, isOnTheWay }: BasketProps) {
   }));
 
   const [{ isDragging }, drag] = useDrag(() => ({
-    type: ITEM_TYPES.BASKET,
+    type: ItemTypes.BASKET,
     item: { name: "BASKET", basketNo },
     end: async (item, monitor) => {
       const dropResult = monitor.getDropResult<DropResult>();
-      const basketStatusKey = Object.keys(BASKET_STATUS).find(
+      const basketStatusKey = Object.keys(BasketStatus).find(
         (key) =>
-          BASKET_STATUS[key as keyof typeof BASKET_STATUS] ===
-          BASKET_STATUS.ON_THE_WAY
+          BasketStatus[key as keyof typeof BasketStatus] ===
+          BasketStatus.ON_THE_WAY
       );
       if (item && dropResult) {
         if (
-          item.name === "BASKET" &&
+          item.name === ItemTypes.BASKET &&
           dropResult.name === "COLUMN" &&
-          !dropResult.isReady
+          dropResult.status !== BasketStatus.READY
         ) {
           await updateBasketStatus.mutateAsync({
             id: basketNo,
@@ -93,36 +100,40 @@ function Basket({ basketNo, courierNo, isOnTheWay }: BasketProps) {
   }));
 
   useEffect(() => {
-    if (isFirstRun.current) {
-      isFirstRun.current = false;
-      return; // Skip the first run
+    function isAllOrdersComplated(basketsOrders: string[]): boolean {
+      let isAllTrue = false;
+      if (Array.isArray(basketsOrders) && basketsOrders.length > 0) {
+        isAllTrue = basketsOrders.every((ordersId: string) => {
+          const order = orders?.find((order: IOrder) => order.id === ordersId);
+
+          return (
+            order?.status === OrderStatus.DELIVERED ||
+            order?.status === OrderStatus.NOT_DELIVERED
+          );
+        });
+      }
+
+      return isAllTrue;
     }
     if (basket && Array.isArray(basket.orders)) {
-      const allOrdersCompleted = basket.orders.every((orderId) => {
-        const order = orders?.find((order) => order.id === orderId);
-        return (
-          order?.status === "DELIVERED" || order?.status === "NOT_DELIVERED"
-        );
-      });
-
-      if (allOrdersCompleted && basket.status !== "COMPLETED") {
+      if (
+        isAllOrdersComplated(basket.orders) &&
+        basket.status !== BasketStatus.COMPLETED
+      ) {
         updateBasketStatus.mutateAsync({
           id: basketNo,
-          status: "COMPLETED",
+          status: BasketStatus.COMPLETED,
         });
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [basket, basketNo, orders]);
 
-  if (isLoading) return <div>Loading...</div>;
   if (!basket) {
     return <></>;
   }
 
-  const color = getStatusColor(
-    BASKET_STATUS[basket.status as keyof typeof BASKET_STATUS]
-  );
+  const color = getStatusColor(BasketStatus[basket.status]);
   const opacity = isDragging ? 0.4 : 1;
 
   function handleBasketClick(
@@ -143,7 +154,7 @@ function Basket({ basketNo, courierNo, isOnTheWay }: BasketProps) {
       <BasketDetailModal
         open={open}
         handleClose={handleClose}
-        basketNo={basketNo}
+        basket={basket}
         isOnTheWay={isOnTheWay}
       />
 
@@ -160,7 +171,7 @@ function Basket({ basketNo, courierNo, isOnTheWay }: BasketProps) {
       >
         <Stack justifyContent={"space-between"} direction={"row"}>
           <Typography fontWeight="bold" color={color}>
-            {BASKET_STATUS[basket.status as keyof typeof BASKET_STATUS]}
+            {BasketStatusLabel[basket.status]}
           </Typography>
           <IconButton
             onClick={handleBasketClick}
@@ -181,7 +192,8 @@ function Basket({ basketNo, courierNo, isOnTheWay }: BasketProps) {
               isOnTheWay={isOnTheWay}
             />
           ))}
-          <Stack direction={"row"} justifyContent={"flex-end"}>
+          <Stack direction={"row"} justifyContent={"space-between"}>
+            <Typography fontWeight="bold">Sepet No - {basketNo}</Typography>
             <Typography fontWeight="bold">Kurye - {courier?.name}</Typography>
           </Stack>
         </Stack>
@@ -189,4 +201,5 @@ function Basket({ basketNo, courierNo, isOnTheWay }: BasketProps) {
     </Box>
   );
 }
+const Basket = memo(BasketComponent);
 export default Basket;

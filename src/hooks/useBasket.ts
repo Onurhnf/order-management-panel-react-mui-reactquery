@@ -10,6 +10,8 @@ import {
   removeBasket,
 } from "../services/basket.service";
 import { toast } from "react-hot-toast";
+import { BasketStatus, OrderStatus } from "../utils/constants";
+import { IOrder } from "../interfaces/IOrder.interface";
 
 const basketKey = "baskets";
 
@@ -105,12 +107,46 @@ export const useRemoveBasket = () => {
   const queryClient = useQueryClient();
 
   return useMutation((basketId: string) => removeBasket(basketId), {
-    onSuccess: () => {
+    onSuccess: (_, basketId) => {
       queryClient.invalidateQueries([basketKey]);
-      toast.success("Sepet başarıyla silindi.");
+      toast.success(`Sepet '${basketId}' başarıyla silindi.`);
     },
     onError: (error: Error) => {
       toast.error(error.message);
     },
   });
+};
+
+export const useBasketsByStatus = (
+  status: BasketStatus,
+  orders: IOrder[] | undefined
+) => {
+  const { data: baskets, isLoading } = useBaskets();
+
+  const filterBasketsByStatus = (status: BasketStatus) =>
+    baskets?.filter((basket) => BasketStatus[basket.status] === status);
+
+  const readyBaskets = filterBasketsByStatus(BasketStatus.READY);
+
+  const filterOrdersByStatus = (status: OrderStatus[]) =>
+    orders?.filter((order) => status.includes(OrderStatus[order.status]));
+
+  const readyOrders = filterOrdersByStatus([
+    OrderStatus.PREPARING,
+    OrderStatus.PREPARED,
+  ]);
+
+  const commonOrders = readyOrders?.filter((order) =>
+    readyBaskets?.some((basket) => basket.orders.includes(order.id as string))
+  );
+
+  const filteredReadyOrders = readyOrders?.filter(
+    (order) => !commonOrders?.includes(order)
+  );
+
+  return {
+    baskets: filterBasketsByStatus(status),
+    filteredReadyOrders,
+    isLoading,
+  };
 };

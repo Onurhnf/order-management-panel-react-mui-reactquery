@@ -1,8 +1,8 @@
 import axios from "axios";
 import { ENDPOINTS } from "../api/apiEndpoints";
-import { Order } from "../interfaces/IOrder.interface";
+import { IOrder } from "../interfaces/IOrder.interface";
 
-export const getAllOrders = async (): Promise<Order[]> => {
+export const getAllOrders = async (): Promise<IOrder[]> => {
   try {
     const response = await axios.get(ENDPOINTS.ORDERS);
     return response.data;
@@ -12,7 +12,7 @@ export const getAllOrders = async (): Promise<Order[]> => {
   }
 };
 
-export const getOrderById = async (id: string): Promise<Order> => {
+export const getOrderById = async (id: string): Promise<IOrder> => {
   try {
     const response = await axios.get(`${ENDPOINTS.ORDERS}/${id}`);
     return response.data;
@@ -25,7 +25,7 @@ export const getOrderById = async (id: string): Promise<Order> => {
 export const updateOrderStatus = async (
   id: string,
   status: string
-): Promise<Order> => {
+): Promise<IOrder> => {
   try {
     const response = await axios.patch(`${ENDPOINTS.ORDERS}/${id}`, { status });
     return response.data;
@@ -37,7 +37,7 @@ export const updateOrderStatus = async (
     throw error;
   }
 };
-export const createOrder = async (newOrder: Order): Promise<Order> => {
+export const createOrder = async (newOrder: IOrder): Promise<IOrder> => {
   try {
     const response = await axios.post(ENDPOINTS.ORDERS, newOrder);
     return response.data;
